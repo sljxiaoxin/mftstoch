@@ -160,7 +160,7 @@ void checkEntry(){
    
    if(strSignal == "sell"){
       if(stochM15_2>stochM15_1){
-         if(stochM15_1 > 40 && stochM5_1 <76.4 && stochH4_1>80){
+         if(stochM15_1 > 40 && stochM5_1 <76.4 && stochH4_1>20){
             objCTradeMgr.Sell(Lots, intSL, intTP, "down");
          }
       }
