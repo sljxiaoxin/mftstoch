@@ -16,7 +16,7 @@
 extern int       MagicNumber     = 201807;
 extern double    Lots            = 0.05;
 extern int       intTP           = 120;
-extern int       intSL           = 35;            //止损点数，不用加0
+extern int       intSL           = 25;            //止损点数，不用加0
 extern double    distance        = 5;   //加仓间隔点数
 
 extern double    levelTriggerHigh = 90;
@@ -79,8 +79,42 @@ void OnTick()
      if(CheckTimeM1==iTime(NULL,PERIOD_M5,0)){
          
      } else {
-         //////////////////////////
-         strSignal = signal();
+         ////////////////////////// 
+         string sig = signal();
+         if(strSignal == "none"){
+            if(sig == "buy"){
+               strSignal = sig;
+               TriggerBuyNumber = 0;
+            }
+            if(sig == "sell"){
+               strSignal = sig;
+               TriggerSellNumber = 0;
+            }
+         }
+         if(strSignal == "buy"){
+            if(sig == "buy"){
+               TriggerBuyNumber += 1;
+            }
+            if(sig == "sell"){
+               strSignal = sig;
+               TriggerSellNumber = 0;
+            }
+            if(sig == "none"){
+               TriggerBuyNumber += 1;
+            }
+         }
+         if(strSignal == "sell"){
+            if(sig == "buy"){
+               strSignal = sig;
+               TriggerBuyNumber = 0;
+            }
+            if(sig == "sell"){
+               TriggerSellNumber += 1;
+            }
+            if(sig == "none"){
+               TriggerSellNumber += 1;
+            }
+         }
          CheckTimeM1 = iTime(NULL,PERIOD_M5,0);
          checkProtected();
          checkEntry();
@@ -96,24 +130,14 @@ string signal()
    for( j=0;j<3;j++) {
       fast[j] = iStochastic(NULL, 0, 14, 1, 1, MODE_SMA, 0, MODE_MAIN, j+1);
    }
-   if(fast[1] < levelTriggerLow){
-        TriggerBuyNumber = 0;
+   string t = "none";
+   if(fast[0] < levelTriggerLow){
+        t = "buy";
    }
-   if(fast[1] >levelTriggerHigh){
-        TriggerSellNumber = 0;
+   if(fast[0] >levelTriggerHigh){
+        t = "sell";
    }
-   if(TriggerBuyNumber == -1  && TriggerSellNumber == -1){
-      return "none";
-   }
-   if(TriggerSellNumber >-1)TriggerSellNumber += 1;
-   if(TriggerBuyNumber >-1)TriggerBuyNumber += 1;
-   if((TriggerBuyNumber == -1 || TriggerBuyNumber > TriggerSellNumber) && TriggerSellNumber>-1){
-      return "sell";
-   }
-   if((TriggerSellNumber == -1 || TriggerBuyNumber < TriggerSellNumber) && TriggerBuyNumber>-1){
-      return "buy";
-   }
-   return "none";
+   return t;
 }
 
 //检测entry
@@ -124,17 +148,19 @@ void checkEntry(){
    stochM15_2 = iStochastic(NULL, PERIOD_M15, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
    stochM15_1 = iStochastic(NULL, PERIOD_M15, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
    double stochM5_1 = iStochastic(NULL, 0, 14, 1, 1, MODE_SMA, 0, MODE_MAIN, 1);
+   double stochH4_1 = iStochastic(NULL, PERIOD_H4, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
    if(strSignal == "buy"){
-      if(stochM15_2<stochM15_3 && stochM15_2<stochM15_1){
-         if(stochM15_1 < 60 && stochM5_1 >23.6){
+      if(stochM15_2<stochM15_1){
+         if(stochM15_1 < 60 && stochM5_1 >23.6 && stochH4_1<80){
+            Print(" buy stochM15_1=",stochM15_1,";stochM15_2=",stochM15_2,";stochM15_3=",stochM15_3);
             objCTradeMgr.Buy(Lots, intSL, intTP, "up");
          }
       }
    }
    
    if(strSignal == "sell"){
-      if(stochM15_2>stochM15_3 && stochM15_2>stochM15_1){
-         if(stochM15_1 > 40 && stochM5_1 <76.4){
+      if(stochM15_2>stochM15_1){
+         if(stochM15_1 > 40 && stochM5_1 <76.4 && stochH4_1>80){
             objCTradeMgr.Sell(Lots, intSL, intTP, "down");
          }
       }
@@ -152,14 +178,14 @@ void checkProtected(){
    for (int i=0; i<OrdersTotal(); i++) {
       if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) {
          if(OrderSymbol()==Symbol() && OrderMagicNumber() == MagicNumber && OrderType() == OP_BUY){
-            if(stochM15_2>stochM15_3 && stochM15_2>stochM15_1){
+            if(strSignal == "sell" && TriggerSellNumber>4 && stochM15_2>stochM15_1){
                tradeTicket = OrderTicket();
                Print("close buy id=>",tradeTicket,";stochM15_1=",stochM15_1,";stochM15_2=",stochM15_2,";stochM15_3=",stochM15_3);
                objCTradeMgr.Close(tradeTicket);
             }
          }
          if(OrderSymbol()==Symbol() && OrderMagicNumber() == MagicNumber && OrderType() == OP_SELL){
-            if(stochM15_2<stochM15_3 && stochM15_2<stochM15_1){
+            if(strSignal == "buy" && TriggerBuyNumber>4 && stochM15_2<stochM15_1){
                tradeTicket = OrderTicket();
                Print("close sell id=>",tradeTicket,";stochM15_1=",stochM15_1,";stochM15_2=",stochM15_2,";stochM15_3=",stochM15_3);
                objCTradeMgr.Close(tradeTicket);
@@ -215,8 +241,13 @@ void MoveTrailingStop(){
                myStopLoss = OrderStopLoss();
                
                //盈利超过2.5Pip则向上提止损
+               if(myStopLoss - openPrice <0 && Close[1] - openPrice >= 7*Pip){
+                  newSL = openPrice - 5*Pip;
+                  OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
+               }
+               
                if(myStopLoss - openPrice <0 && Close[1] - openPrice >= 14*Pip){
-                  newSL = openPrice + 2*Pip;
+                  newSL = openPrice + 5*Pip;
                   OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
                }
                
@@ -228,8 +259,13 @@ void MoveTrailingStop(){
                openPrice = OrderOpenPrice();
                myStopLoss = OrderStopLoss();
                
+               if(openPrice - myStopLoss <0 && openPrice - Close[1]  > 7*Pip){
+                  newSL = openPrice + 5*Pip;
+                  OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
+               }
+               
                if(openPrice - myStopLoss <0 && openPrice - Close[1]  > 14*Pip){
-                  newSL = openPrice - 2*Pip;
+                  newSL = openPrice - 5*Pip;
                   OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
                }
             }
