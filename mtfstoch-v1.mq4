@@ -153,19 +153,29 @@ void checkEntry(){
    
    double stochM5_1 = iStochastic(NULL, 0, 14, 1, 1, MODE_SMA, 0, MODE_MAIN, 1);
    double stochH4_1 = iStochastic(NULL, PERIOD_H4, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
+   double stochH4_2 = iStochastic(NULL, PERIOD_H4, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
+   double stochH1_1 = iStochastic(NULL, PERIOD_H1, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
+   double stochH1_2 = iStochastic(NULL, PERIOD_H1, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
    if(strSignal == "buy" && TriggerBuyNumber>4){
-      if(stochM30_2<stochM30_1 && stochM15_2<stochM15_1){
-         if(stochM15_1 < 80  && stochM5_1 >23.6 && stochH4_1<80){
-            Print(" buy stochM15_1=",stochM15_1,";stochM15_2=",stochM15_2,";stochM15_3=",stochM15_3);
-            objCTradeMgr.Buy(Lots, intSL, intTP, "up");
+      
+         if(stochH4_1>60 ){
+            //如果H4位置较高，即将到达超买，则很可能将向下，对buy来说比较危险，除非其他几个周期全向上，并且都小于50
+            if(stochM15_1 < 50 && stochM30_1<50 && stochH1_1<50 
+            && stochM30_2<stochM30_1 && stochM15_2<stochM15_1 && stochH1_2<stochH1_1){
+                Print(" buy stochM15_1=",stochM15_1,";stochM15_2=",stochM15_2,";stochM15_3=",stochM15_3);
+               objCTradeMgr.Buy(Lots, intSL, intTP, "up1");
+            }
          }
-      }
+         
    }
    
    if(strSignal == "sell" && TriggerSellNumber>4){
-      if(stochM30_2>stochM30_1 && stochM15_2>stochM15_1){
-         if(stochM15_1 > 20  && stochM5_1 <76.4 && stochH4_1>20){
-            objCTradeMgr.Sell(Lots, intSL, intTP, "down");
+      
+      if(stochH4_1<40 ){
+         if(stochM15_1 > 50 && stochM30_1>50 && stochH1_1>50 
+         && stochM30_2>stochM30_1 && stochM15_2>stochM15_1 && stochH1_2>stochH1_1){
+             Print(" sell stochM15_1=",stochM15_1,";stochM15_2=",stochM15_2,";stochM15_3=",stochM15_3);
+            objCTradeMgr.Sell(Lots, intSL, intTP, "down1");
          }
       }
    }
@@ -246,15 +256,21 @@ void MoveTrailingStop(){
                myStopLoss = OrderStopLoss();
                
                //盈利超过2.5Pip则向上提止损
-               if(myStopLoss - openPrice <0 && Close[1] - openPrice >= 7*Pip){
+               if(myStopLoss - openPrice < 8*Pip && Bid - openPrice >= 25*Pip){
+                  newSL = openPrice + 8*Pip;
+                  OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
+               }else if(myStopLoss - openPrice <5*Pip && Bid - openPrice >= 14*Pip){
+                  newSL = openPrice + 5*Pip;
+                  OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
+               }else if(myStopLoss - openPrice <0 && Bid - openPrice >= 10*Pip){
+                  newSL = openPrice + 2*Pip;
+                  OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
+               }else if(myStopLoss - openPrice <0 && Bid - openPrice >= 7*Pip){
                   newSL = openPrice - 5*Pip;
                   OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
                }
                
-               if(myStopLoss - openPrice <0 && Close[1] - openPrice >= 14*Pip){
-                  newSL = openPrice + 5*Pip;
-                  OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
-               }
+               
                
                
             }
@@ -263,16 +279,21 @@ void MoveTrailingStop(){
               // dtNow = iTime(NULL,PERIOD_M1,1);
                openPrice = OrderOpenPrice();
                myStopLoss = OrderStopLoss();
-               
-               if(openPrice - myStopLoss <0 && openPrice - Close[1]  > 7*Pip){
+               if(openPrice - myStopLoss <8*Pip && openPrice - Ask  > 25*Pip){
+                  newSL = openPrice - 8*Pip;
+                  OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
+               }else if(openPrice - myStopLoss <5*Pip && openPrice - Ask  > 14*Pip){
+                  newSL = openPrice - 5*Pip;
+                  OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
+               }else if(openPrice - myStopLoss <0 && openPrice - Ask  > 10*Pip){
+                  newSL = openPrice -2*Pip;
+                  OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
+               }else if(openPrice - myStopLoss <0 && openPrice - Ask  > 7*Pip){
                   newSL = openPrice + 5*Pip;
                   OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
                }
                
-               if(openPrice - myStopLoss <0 && openPrice - Close[1]  > 14*Pip){
-                  newSL = openPrice - 5*Pip;
-                  OrderModify(OrderTicket(),openPrice,newSL, 0, 0);
-               }
+               
             }
 
          }
