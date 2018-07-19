@@ -143,41 +143,151 @@ string signal()
 //检测entry
 void checkEntry(){
    if(objCTradeMgr.Total()>0)return ;
-   double stochM15_3,stochM15_2,stochM15_1,stochM30_1,stochM30_2;
-   stochM15_3 = iStochastic(NULL, PERIOD_M15, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 3);
-   stochM15_2 = iStochastic(NULL, PERIOD_M15, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
-   stochM15_1 = iStochastic(NULL, PERIOD_M15, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
-   
-   stochM30_2 = iStochastic(NULL, PERIOD_M30, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
-   stochM30_1 = iStochastic(NULL, PERIOD_M30, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
-   
+	
    double stochM5_1 = iStochastic(NULL, 0, 14, 1, 1, MODE_SMA, 0, MODE_MAIN, 1);
-   double stochH4_1 = iStochastic(NULL, PERIOD_H4, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
-   double stochH4_2 = iStochastic(NULL, PERIOD_H4, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
+
+   
+   double stochM15_1 = iStochastic(NULL, PERIOD_M15, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
+   double stochM15_2 = iStochastic(NULL, PERIOD_M15, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
+   double stochM15_3 = iStochastic(NULL, PERIOD_M15, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 3);
+   
+   stochM30_1 = iStochastic(NULL, PERIOD_M30, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
+   stochM30_2 = iStochastic(NULL, PERIOD_M30, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
+   
    double stochH1_1 = iStochastic(NULL, PERIOD_H1, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
    double stochH1_2 = iStochastic(NULL, PERIOD_H1, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
+
+   double stochH4_1 = iStochastic(NULL, PERIOD_H4, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
+   double stochH4_2 = iStochastic(NULL, PERIOD_H4, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
+   
+
    if(strSignal == "buy" && TriggerBuyNumber>4){
       
-         if(stochH4_1>60 ){
-            //如果H4位置较高，即将到达超买，则很可能将向下，对buy来说比较危险，除非其他几个周期全向上，并且都小于50
-            if(stochM15_1 < 50 && stochM30_1<50 && stochH1_1<50 
-            && stochM30_2<stochM30_1 && stochM15_2<stochM15_1 && stochH1_2<stochH1_1){
-                Print(" buy stochM15_1=",stochM15_1,";stochM15_2=",stochM15_2,";stochM15_3=",stochM15_3);
-               objCTradeMgr.Buy(Lots, intSL, intTP, "up1");
-            }
+         if(stochH4_1>=80 ){
+            if(stochM15_1<=50 && stochM30_1<=50 && stochH1_1<=50
+	     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2 
+	    ){
+		objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_1");
+	    }
          }
+	 if(stochH4_1<80 && stochH4_1>50){
+            if(stochH4_1>stochH4_2){
+		//up
+		if(stochH1_1>80 && stochM30_1<=50 && stochM15_1<=50
+		  && stochM15_1>stochM15_2 && stochM30_1>stochM30_2
+		){
+			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_2");
+		}
+	    }
+	    if(stochH4_1<stochH4_2){
+		//down
+		if(stochM15_1<=50 && stochM30_1<=50 && stochH1_1<=50
+		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2 
+		){
+			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_3");
+		}
+	    }
+         }
+	 if(stochH4_1<50 && stochH4_1>20){
+	     if(stochH4_1>stochH4_2){
+		//up
+		if(stochM15_1<=60 && stochM15_1>stochM15_2){
+		   if((stochM30_1<=60 && stochM30_1>stochM30_2) || (stochH1_1<=60 && stochH1_1>stochH1_2)){
+			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_4");
+		   } 
+		}
+	     }
+	     if(stochH4_1<stochH4_2){
+		//down
+		if(stochM15_1<=50 && stochM30_1<=50 && stochH1_1<=50
+		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2 
+		    ){
+			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_5");
+		    }
+	     }
+	 }
+	 if(stochH4_1<20){
+	     if(stochH4_1>stochH4_2){
+		if(stochM15_1<=60 && stochM30_1<=60 && stochH1_1<=60
+		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 
+		    ){
+			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_6");
+		    }
+	     }
+	     if(stochH4_1<stochH4_2){
+		if(stochM15_1>20 && stochM15_1<=60 && stochM30_1<=60 && stochH1_1<=60
+		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2 
+		    ){
+			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_7");
+		    }
+	     }
+	 }
          
    }
    
    if(strSignal == "sell" && TriggerSellNumber>4){
       
-      if(stochH4_1<40 ){
-         if(stochM15_1 > 50 && stochM30_1>50 && stochH1_1>50 
-         && stochM30_2>stochM30_1 && stochM15_2>stochM15_1 && stochH1_2>stochH1_1){
-             Print(" sell stochM15_1=",stochM15_1,";stochM15_2=",stochM15_2,";stochM15_3=",stochM15_3);
-            objCTradeMgr.Sell(Lots, intSL, intTP, "down1");
+      //objCTradeMgr.Sell(Lots, intSL, intTP, "down1");
+        if(stochH4_1<=20 ){
+            if(stochM15_1>=50 && stochM30_1>=50 && stochH1_1>=50
+	     && stochM15_1<stochM15_2 && stochM30_1<stochM30_2 && stochH1_1<stochH1_2 
+	    ){
+		objCTradeMgr.Sell(Lots, intSL, intTP, "down_type_1");
+	    }
          }
-      }
+	 if(stochH4_1>20 && stochH4_1<50){
+            if(stochH4_1>stochH4_2){
+		//up
+		if(stochM15_1>=50 && stochM30_1>=50 && stochH1_1>=50
+		     && stochM15_1<stochM15_2 && stochM30_1<stochM30_2 && stochH1_1<stochH1_2 
+		){
+			objCTradeMgr.Sell(Lots, intSL, intTP, "down_type_2");
+		}
+		
+	    }
+	    if(stochH4_1<stochH4_2){
+		//down
+		if(stochH1_1>80 && stochM30_1<=50 && stochM15_1<=50
+		  && stochM15_1>stochM15_2 && stochM30_1>stochM30_2
+		){
+			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_2");
+		}
+	    }
+         }
+	 if(stochH4_1<50 && stochH4_1>20){
+	     if(stochH4_1>stochH4_2){
+		//up
+		if(stochM15_1<=60 && stochM15_1>stochM15_2){
+		   if((stochM30_1<=60 && stochM30_1>stochM30_2) || (stochH1_1<=60 && stochH1_1>stochH1_2)){
+			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_4");
+		   } 
+		}
+	     }
+	     if(stochH4_1<stochH4_2){
+		//down
+		if(stochM15_1<=50 && stochM30_1<=50 && stochH1_1<=50
+		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2 
+		    ){
+			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_5");
+		    }
+	     }
+	 }
+	 if(stochH4_1<20){
+	     if(stochH4_1>stochH4_2){
+		if(stochM15_1<=60 && stochM30_1<=60 && stochH1_1<=60
+		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 
+		    ){
+			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_6");
+		    }
+	     }
+	     if(stochH4_1<stochH4_2){
+		if(stochM15_1>20 && stochM15_1<=60 && stochM30_1<=60 && stochH1_1<=60
+		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2 
+		    ){
+			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_7");
+		    }
+	     }
+	 }
    }
 }
 
