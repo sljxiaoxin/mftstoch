@@ -30,7 +30,7 @@ extern bool      isTrailingStop   = true;
 int digits;
 int       NumberOfTries   = 10,
           Slippage        = 5;
-datetime  CheckTimeM1,CheckTimeM5;
+datetime  CheckTimeM15,CheckTimeM5,CheckTimeM1;
 double    Pip;
 CTradeMgr *objCTradeMgr;  //订单管理类
 CDictionary *objDict = NULL;     //订单数据字典类
@@ -75,74 +75,64 @@ void OnTick()
      //updateLastTicketStatus();
      subPrintDetails();
      
-     //M1产生交易
-     if(CheckTimeM1==iTime(NULL,PERIOD_M5,0)){
+     if(CheckTimeM1==iTime(NULL,PERIOD_M1,0)){
+         
+     } else {
+         checkEntry();
+         CheckTimeM1 = iTime(NULL,PERIOD_M1,0);
+     }
+     
+     if(CheckTimeM15==iTime(NULL,PERIOD_M15,0)){
+         
+     } else {
+         string sig = signal();
+         if(sig != "none"){
+            strSignal = sig;
+         }
+         CheckTimeM15 = iTime(NULL,PERIOD_M15,0);
+     }
+     
+     if(CheckTimeM5==iTime(NULL,PERIOD_M5,0)){
          
      } else {
          ////////////////////////// 
-         string sig = signal();
-         if(strSignal == "none"){
-            if(sig == "buy"){
-               strSignal = sig;
-               TriggerBuyNumber = 0;
-            }
-            if(sig == "sell"){
-               strSignal = sig;
-               TriggerSellNumber = 0;
-            }
-         }
-         if(strSignal == "buy"){
-            if(sig == "buy"){
-               TriggerBuyNumber += 1;
-            }
-            if(sig == "sell"){
-               strSignal = sig;
-               TriggerSellNumber = 0;
-            }
-            if(sig == "none"){
-               TriggerBuyNumber += 1;
-            }
-         }
-         if(strSignal == "sell"){
-            if(sig == "buy"){
-               strSignal = sig;
-               TriggerBuyNumber = 0;
-            }
-            if(sig == "sell"){
-               TriggerSellNumber += 1;
-            }
-            if(sig == "none"){
-               TriggerSellNumber += 1;
-            }
-         }
-         CheckTimeM1 = iTime(NULL,PERIOD_M5,0);
+         CheckTimeM5 = iTime(NULL,PERIOD_M5,0);
          checkProtected();
-         checkEntry();
      }
  }
 
-
- //信号检测
 string signal()
 {
-   double fast[3];
+   double stochM15[3];
    int j;
    for( j=0;j<3;j++) {
-      fast[j] = iStochastic(NULL, 0, 14, 1, 1, MODE_SMA, 0, MODE_MAIN, j+1);
+      stochM15[j] = iStochastic(NULL, PERIOD_M15, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, j+1);
    }
+   double stochM5;
    string t = "none";
-   if(fast[0] < levelTriggerLow){
-        t = "buy";
+   if(stochM15[0]>stochM15[1] && stochM15[2]>stochM15[1]){
+      for( j=2;j<20;j++) {
+         stochM5 = iStochastic(NULL, PERIOD_M5, 14, 1, 1, MODE_SMA, 0, MODE_MAIN, j+1);
+         if(stochM5 <=levelTriggerLow){
+            t = "long";
+         }
+      }
    }
-   if(fast[0] >levelTriggerHigh){
-        t = "sell";
+   if(stochM15[0]<stochM15[1] && stochM15[2]<stochM15[1]){
+      for( j=2;j<20;j++) {
+         stochM5 = iStochastic(NULL, PERIOD_M5, 14, 1, 1, MODE_SMA, 0, MODE_MAIN, j+1);
+         if(stochM5 >=levelTriggerHigh){
+            t = "short";
+         }
+      }
    }
    return t;
 }
 
-//检测entry
 void checkEntry(){
    if(objCTradeMgr.Total()>0)return ;
+   
+	double stochM1_1 = iStochastic(NULL, PERIOD_M1, 5, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
 	
    double stochM5_1 = iStochastic(NULL, 0, 14, 1, 1, MODE_SMA, 0, MODE_MAIN, 1);
 
@@ -151,8 +141,8 @@ void checkEntry(){
    double stochM15_2 = iStochastic(NULL, PERIOD_M15, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
    double stochM15_3 = iStochastic(NULL, PERIOD_M15, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 3);
    
-   stochM30_1 = iStochastic(NULL, PERIOD_M30, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
-   stochM30_2 = iStochastic(NULL, PERIOD_M30, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
+   double stochM30_1 = iStochastic(NULL, PERIOD_M30, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
+   double stochM30_2 = iStochastic(NULL, PERIOD_M30, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
    
    double stochH1_1 = iStochastic(NULL, PERIOD_H1, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 1);
    double stochH1_2 = iStochastic(NULL, PERIOD_H1, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
@@ -161,133 +151,36 @@ void checkEntry(){
    double stochH4_2 = iStochastic(NULL, PERIOD_H4, 14, 3, 3, MODE_SMA, 0, MODE_MAIN, 2);
    
 
-   if(strSignal == "buy" && TriggerBuyNumber>4){
-      
-         if(stochH4_1>=80 ){
-            if(stochM15_1<=50 && stochM30_1<=50 && stochH1_1<=50
-	     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2 
-	    ){
-		objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_1");
-	    }
+   if(strSignal == "long" && stochM1_1<30){
+      if(stochH4_1<=20){
+         if(stochM15_1>20 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2){
+             objCTradeMgr.Buy(Lots, intSL, intTP, "long_1");
          }
-	 if(stochH4_1<80 && stochH4_1>50){
-            if(stochH4_1>stochH4_2){
-		//up
-		if(stochH1_1>80 && stochM30_1<=50 && stochM15_1<=50
-		  && stochM15_1>stochM15_2 && stochM30_1>stochM30_2
-		){
-			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_2");
-		}
-	    }
-	    if(stochH4_1<stochH4_2){
-		//down
-		if(stochM15_1<=50 && stochM30_1<=50 && stochH1_1<=50
-		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2 
-		){
-			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_3");
-		}
-	    }
+      }else if(stochH4_1>20 && stochH4_1<80){
+         if(stochM15_1>stochM15_2 && stochM30_1>stochM30_2){
+             objCTradeMgr.Buy(Lots, intSL, intTP, "long_2");
          }
-	 if(stochH4_1<50 && stochH4_1>20){
-	     if(stochH4_1>stochH4_2){
-		//up
-		if(stochM15_1<=60 && stochM15_1>stochM15_2){
-		   if((stochM30_1<=60 && stochM30_1>stochM30_2) || (stochH1_1<=60 && stochH1_1>stochH1_2)){
-			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_4");
-		   } 
-		}
-	     }
-	     if(stochH4_1<stochH4_2){
-		//down
-		if(stochM15_1<=50 && stochM30_1<=50 && stochH1_1<=50
-		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2 
-		    ){
-			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_5");
-		    }
-	     }
-	 }
-	 if(stochH4_1<20){
-	     if(stochH4_1>stochH4_2){
-		if(stochM15_1<=60 && stochM30_1<=60 && stochH1_1<=60
-		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 
-		    ){
-			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_6");
-		    }
-	     }
-	     if(stochH4_1<stochH4_2){
-		if(stochM15_1>20 && stochM15_1<=60 && stochM30_1<=60 && stochH1_1<=60
-		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2 
-		    ){
-			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_7");
-		    }
-	     }
-	 }
-         
+      }else if(stochH4_1>80){
+         if(stochM15_1>stochM15_2 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2){
+             objCTradeMgr.Buy(Lots, intSL, intTP, "long_3");
+         }
+      }
    }
    
-   if(strSignal == "sell" && TriggerSellNumber>4){
-      
-      //objCTradeMgr.Sell(Lots, intSL, intTP, "down1");
-        if(stochH4_1<=20 ){
-            if(stochM15_1>=50 && stochM30_1>=50 && stochH1_1>=50
-	     && stochM15_1<stochM15_2 && stochM30_1<stochM30_2 && stochH1_1<stochH1_2 
-	    ){
-		objCTradeMgr.Sell(Lots, intSL, intTP, "down_type_1");
-	    }
+   if(strSignal == "short" && stochM1_1>70){
+      if(stochH4_1>=80){
+         if(stochM15_1<80 && stochM30_1<stochM30_2 && stochH1_1<stochH1_2){
+             objCTradeMgr.Sell(Lots, intSL, intTP, "short_1");
          }
-	 if(stochH4_1>20 && stochH4_1<50){
-            if(stochH4_1>stochH4_2){
-		//up
-		if(stochM15_1>=50 && stochM30_1>=50 && stochH1_1>=50
-		     && stochM15_1<stochM15_2 && stochM30_1<stochM30_2 && stochH1_1<stochH1_2 
-		){
-			objCTradeMgr.Sell(Lots, intSL, intTP, "down_type_2");
-		}
-		
-	    }
-	    if(stochH4_1<stochH4_2){
-		//down
-		if(stochH1_1>80 && stochM30_1<=50 && stochM15_1<=50
-		  && stochM15_1>stochM15_2 && stochM30_1>stochM30_2
-		){
-			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_2");
-		}
-	    }
+      }else if(stochH4_1>20 && stochH4_1<80){
+         if(stochM15_1<stochM15_2 && stochM30_1<stochM30_2){
+             objCTradeMgr.Sell(Lots, intSL, intTP, "short_2");
          }
-	 if(stochH4_1<50 && stochH4_1>20){
-	     if(stochH4_1>stochH4_2){
-		//up
-		if(stochM15_1<=60 && stochM15_1>stochM15_2){
-		   if((stochM30_1<=60 && stochM30_1>stochM30_2) || (stochH1_1<=60 && stochH1_1>stochH1_2)){
-			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_4");
-		   } 
-		}
-	     }
-	     if(stochH4_1<stochH4_2){
-		//down
-		if(stochM15_1<=50 && stochM30_1<=50 && stochH1_1<=50
-		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2 
-		    ){
-			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_5");
-		    }
-	     }
-	 }
-	 if(stochH4_1<20){
-	     if(stochH4_1>stochH4_2){
-		if(stochM15_1<=60 && stochM30_1<=60 && stochH1_1<=60
-		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 
-		    ){
-			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_6");
-		    }
-	     }
-	     if(stochH4_1<stochH4_2){
-		if(stochM15_1>20 && stochM15_1<=60 && stochM30_1<=60 && stochH1_1<=60
-		     && stochM15_1>stochM15_2 && stochM30_1>stochM30_2 && stochH1_1>stochH1_2 
-		    ){
-			objCTradeMgr.Buy(Lots, intSL, intTP, "up_type_7");
-		    }
-	     }
-	 }
+      }else if(stochH4_1<20){
+         if(stochM15_1<stochM15_2 && stochM30_1<stochM30_2 && stochH1_1<stochH1_2){
+             objCTradeMgr.Sell(Lots, intSL, intTP, "short_2");
+         }
+      }
    }
 }
 
@@ -303,14 +196,14 @@ void checkProtected(){
    for (int i=0; i<OrdersTotal(); i++) {
       if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) {
          if(OrderSymbol()==Symbol() && OrderMagicNumber() == MagicNumber && OrderType() == OP_BUY){
-            if(strSignal == "sell"  && stochM30_2>stochM30_1 && stochM15_2>stochM15_1){
+            if(strSignal == "short"  && stochM30_2>stochM30_1 && stochM15_2>stochM15_1){
                tradeTicket = OrderTicket();
                Print("close buy id=>",tradeTicket,";stochM15_1=",stochM15_1,";stochM15_2=",stochM15_2,";stochM15_3=",stochM15_3);
                objCTradeMgr.Close(tradeTicket);
             }
          }
          if(OrderSymbol()==Symbol() && OrderMagicNumber() == MagicNumber && OrderType() == OP_SELL){
-            if(strSignal == "buy" && stochM30_2<stochM30_1  && stochM15_2<stochM15_1){
+            if(strSignal == "long" && stochM30_2<stochM30_1  && stochM15_2<stochM15_1){
                tradeTicket = OrderTicket();
                Print("close sell id=>",tradeTicket,";stochM15_1=",stochM15_1,";stochM15_2=",stochM15_2,";stochM15_3=",stochM15_3);
                objCTradeMgr.Close(tradeTicket);
